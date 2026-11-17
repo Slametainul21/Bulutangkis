@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generator Ikon PNG PWA</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0b1320; color: #f8fafc; padding: 24px; max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; }
+    button { background: #0f766e; color: #fff; border: none; padding: 12px 20px; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; margin: 8px 8px 8px 0; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+    .card { background: #162235; padding: 14px; border-radius: 12px; text-align: center; }
+    canvas { border: 1px solid #334155; border-radius: 12px; max-width: 180px; height: auto; display: block; margin: 0 auto 8px; }
+    a { color: #34d399; font-weight: 600; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Generator Ikon PNG dari <code>./icons/icon.svg</code></h1>
+  <p>Buka halaman ini melalui server lokal (<code>python -m http.server</code>), lalu klik tombol di bawah untuk mengunduh ikon PNG ke folder <code>icons/</code>.</p>
+  <button id="btn-gen">Buat &amp; Unduh Semua PNG</button>
+  <div class="grid" id="preview"></div>
+
+  <script>
+    const TARGETS = [
+      { name: 'icon-192.png', size: 192, maskable: false },
+      { name: 'icon-512.png', size: 512, maskable: false },
+      { name: 'maskable-512.png', size: 512, maskable: true },
+    ];
+
+    async function renderIcons(autoDownload = false) {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+
+      const res = await fetch('./icons/icon.svg');
+      const svgText = await res.text();
+      const blob = new Blob([svgText], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+
+      const img = new Image();
+      img.onload = () => {
+        for (const t of TARGETS) {
+          const canvas = document.createElement('canvas');
+          canvas.width = t.size;
+          canvas.height = t.size;
+          const ctx = canvas.getContext('2d');
+
+          if (t.maskable) {
+            ctx.fillStyle = '#0b1320';
+            ctx.fillRect(0, 0, t.size, t.size);
+            const pad = Math.round(t.size * 0.12);
+            ctx.drawImage(img, pad, pad, t.size - pad * 2, t.size - pad * 2);
+          } else {
+            ctx.drawImage(img, 0, 0, t.size, t.size);
+          }
+
+          const dataUrl = canvas.toDataURL('image/png');
+          const card = document.createElement('div');
+          card.className = 'card';
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = t.name;
+          link.textContent = `Unduh ${t.name} (${t.size}x${t.size})`;
+          card.appendChild(canvas);
+          card.appendChild(link);
+          preview.appendChild(card);
+
+          if (autoDownload) {
+            link.click();
+          }
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+
+    document.getElementById('btn-gen').addEventListener('click', () => renderIcons(true));
+    renderIcons(false);
+  </script>
+</body>
+</html>
